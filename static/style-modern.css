@@ -86,11 +86,81 @@ button:hover {
 .status {
     background: #fff;
     border: 1px solid #ddd;
+    border-left: 4px solid #8e8e93;
     border-radius: 6px;
-    padding: 10px;
+    padding: 10px 12px;
     margin: 8px 0;
     font-size: 14px;
+    color: #555;
+}
+
+.status-icon {
+    margin-right: 6px;
+}
+
+.status-success {
+    background: #f0faf1;
+    border-color: #d5f0da;
+    border-left-color: #34c759;
+    color: #1b6b32;
+}
+
+.status-error {
+    background: #fff2f1;
+    border-color: #ffdedb;
+    border-left-color: #ff3b30;
+    color: #c0392b;
+}
+
+.status-loading {
     color: #666;
+}
+
+.status-loading .status-icon {
+    display: inline-block;
+    animation: statusPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+#ai-status:empty {
+    display: none;
+}
+
+/* AI-чат: строка с кнопками и счётчиком символов */
+.ai-form-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.charcount {
+    font-size: 13px;
+    color: #999;
+    margin-left: auto;
+}
+
+.charcount-warn {
+    color: #ff3b30;
+    font-weight: 600;
+}
+
+#ai-submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.book-empty {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    box-shadow: none;
+    border-style: dashed;
 }
 
 table {
@@ -132,6 +202,53 @@ th {
     background: #f0f0f0;
     padding: 2px 4px;
     border-radius: 3px;
+}
+
+/* Дробь: числитель над чертой, знаменатель под ней. */
+.frac {
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+    margin: 0 3px;
+    line-height: 1.15;
+}
+
+.frac-num,
+.frac-den {
+    display: block;
+    padding: 0 4px;
+}
+
+.frac-num {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1px;
+}
+
+.frac-den {
+    padding-top: 1px;
+}
+
+/* Корень: знак + черта над подкоренным выражением */
+.sqrt {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.sqrt-sign {
+    font-size: 1.15em;
+    margin-right: -1px;
+}
+
+.sqrt-body {
+    display: inline-block;
+    border-top: 2px solid #333;
+    padding: 0 3px 1px;
+}
+
+.sqrt-idx {
+    font-size: 0.65em;
+    vertical-align: 0.9em;
+    margin-right: -0.35em;
 }
 
 .exchange {
@@ -257,4 +374,135 @@ a:hover {
 .subject-btn:hover {
     background: #007aff;
     color: #fff;
+}
+/* Уже поехавшие вопрос/ответ выглядят опрятнее с чуть более выраженным
+   разделением и мягкой подсветкой при наведении/фокусе. */
+.exchange {
+    transition: box-shadow 0.15s;
+}
+
+.exchange:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+textarea:focus,
+input[type="text"]:focus,
+input[type="url"]:focus,
+select:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
+}
+
+/* Уже сайд от 480px — плотнее отступы и меньше заголовок под маленький
+   экран телефона. */
+@media (max-width: 480px) {
+    body {
+        padding: 14px;
+        font-size: 15px;
+    }
+    h1 { font-size: 22px; }
+    h2 { font-size: 19px; }
+    nav a {
+        padding: 7px 10px;
+        font-size: 14px;
+    }
+    .ai-form-row {
+        gap: 6px;
+    }
+    .charcount {
+        margin-left: 0;
+        width: 100%;
+        text-align: right;
+    }
+}
+
+/* Тёмная тема — следует системной настройке устройства. */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #1c1c1e;
+        color: #e5e5e7;
+    }
+    nav {
+        border-bottom-color: #38383a;
+    }
+    nav a {
+        background: #2c2c2e;
+        border-color: #3a3a3c;
+        color: #e5e5e7;
+    }
+    nav a.active {
+        background: #0a84ff;
+        border-color: #0a84ff;
+        color: #fff;
+    }
+    input[type="text"],
+    input[type="url"],
+    textarea,
+    select {
+        background: #2c2c2e;
+        border-color: #3a3a3c;
+        color: #e5e5e7;
+    }
+    input[type="submit"],
+    button {
+        background: #0a84ff;
+    }
+    input[type="submit"]:hover,
+    button:hover {
+        background: #409cff;
+    }
+    .status {
+        background: #2c2c2e;
+        border-color: #3a3a3c;
+        color: #c7c7cc;
+    }
+    .status-success {
+        background: #16281c;
+        border-color: #234a2c;
+        color: #63d47b;
+    }
+    .status-error {
+        background: #2c1717;
+        border-color: #4a2323;
+        color: #ff6961;
+    }
+    table, .exchange, .book-item, .proxy-content {
+        background: #2c2c2e;
+        border-color: #3a3a3c;
+    }
+    th {
+        background: #232326;
+    }
+    tr:nth-child(even) {
+        background: #262628;
+    }
+    .question {
+        color: #c7c7cc;
+        border-bottom-color: #3a3a3c;
+    }
+    .answer {
+        color: #e5e5e7;
+    }
+    .math-display, .math-inline {
+        background: #232326;
+    }
+    pre, code {
+        background: #232326;
+        border-color: #3a3a3c;
+    }
+    a {
+        color: #0a84ff;
+    }
+    .subject-btn {
+        background: #2c2c2e;
+        border-color: #0a84ff;
+        color: #0a84ff;
+    }
+    .charcount {
+        color: #8e8e93;
+    }
+    .frac-num, .sqrt-body {
+        border-color: #e5e5e7;
+    }
 }

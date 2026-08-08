@@ -7,9 +7,9 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Form, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
-from templates import render_page
+from templates import render_page, render_status
 from subjects import SUBJECTS
 from services.rate_limit import SlidingWindowLimiter
 from services.ai_renderer import render_ai_answer
@@ -28,6 +28,14 @@ _ai_limiter = SlidingWindowLimiter(AI_RATE_LIMIT_PER_MINUTE, window_seconds=60)
 HISTORY_FILE = Path("data/ai_history.json")
 HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
 MAX_HISTORY = 30
+
+
+def _is_ajax(request: Request) -> bool:
+    """Наш JS помечает AJAX-запросы этим заголовком (см. app-common.js).
+    Если JS на устройстве не сработал (или это очень старый Kindle-браузер
+    без XMLHttpRequest) — форма просто отправится как обычный POST и сюда
+    заголовок не попадёт, тогда отдаём полную HTML-страницу как раньше."""
+    return request.headers.get("x-requested-with", "").lower() == "xmlhttprequest"
 
 
 def load_history():
@@ -94,6 +102,8 @@ def render_chat_page(
     request: Request,
     subject: Optional[str] = None,
     status_msg: Optional[str] = None,
+    status_kind: str = "error",
+    draft_message: Optional[str] = None,
 ) -> str:
     subject_info = SUBJECTS.get(subject)
     placeholder = (
@@ -114,9 +124,10 @@ def render_chat_page(
     history = load_history()
     history_html = render_history_html(history)
 
-    status_banner = (
-        f'<p class="status">{html.escape(status_msg)}</p>' if status_msg else ""
-    )
+    status_banner = render_status(status_msg, status_kind)
+    # Черновик сохраняем в textarea только при ошибке — чтобы не
+    # заставлять переписывать длинный вопрос заново после сбоя.
+    textarea_value = html.escape(draft_message) if (status_msg and draft_message) else ""
 
     body = f"""
     {subject_label}
@@ -126,12 +137,15 @@ def render_chat_page(
     </div>
     <form method="post" action="/ai/chat" id="ai-form">
       {subject_field}
-      <textarea name="message" rows="5" maxlength="{AI_MAX_MESSAGE_CHARS}"
-        placeholder="{html.escape(placeholder)}"></textarea>
-      <input type="submit" value="Отправить">
-      <span id="ai-status" class="status"></span>
+      <textarea name="message" id="ai-message" rows="5" maxlength="{AI_MAX_MESSAGE_CHARS}"
+        placeholder="{html.escape(placeholder)}">{textarea_value}</textarea>
+      <div class="ai-form-row">
+        <input type="submit" id="ai-submit" value="Отправить">
+        <button type="button" onclick="clearAiHistory()">Очистить историю</button>
+        <span id="ai-charcount" class="charcount"></span>
+      </div>
+      <span id="ai-status"></span>
     </form>
-    <button type="button" onclick="clearAiHistory()">Очистить историю</button>
     """
     return render_page("AI чат", body, active="/ai/", request=request)
 
@@ -141,7 +155,7 @@ def chat_page(request: Request, subject: Optional[str] = Query(default=None)):
     return HTMLResponse(render_chat_page(request, subject=subject))
 
 
-@router.post("/chat", response_class=HTMLResponse)
+@router.post("/chat")
 async def chat(
     request: Request,
     message: str = Form(...),
@@ -152,7 +166,9 @@ async def chat(
     answer = None
     answer_html = None
 
-    if len(message) > AI_MAX_MESSAGE_CHARS:
+    if not message or not message.strip():
+        status_msg = "Сообщение пустое — напиши вопрос перед отправкой."
+    elif len(message) > AI_MAX_MESSAGE_CHARS:
         status_msg = (
             f"Сообщение слишком длинное ({len(message)} символов, "
             f"лимит {AI_MAX_MESSAGE_CHARS}). Сократи и отправь ещё раз."
@@ -192,17 +208,49 @@ async def chat(
             subject=subject,
         )
 
+    if _is_ajax(request):
+        return JSONResponse(
+            {
+                "ok": answer is not None,
+                "history_html": render_history_html(load_history()),
+                "status_msg": status_msg,
+                "status_kind": "error" if status_msg else None,
+            }
+        )
+
     return HTMLResponse(
-        render_chat_page(request, subject=subject, status_msg=status_msg)
+        render_chat_page(
+            request,
+            subject=subject,
+            status_msg=status_msg,
+            status_kind="error",
+            draft_message=message,
+        )
     )
 
 
-@router.post("/clear", response_class=HTMLResponse)
+@router.post("/clear")
 def clear_ai_history(
     request: Request,
     subject: Optional[str] = Query(default=None),
 ):
     clear_history()
+
+    if _is_ajax(request):
+        return JSONResponse(
+            {
+                "ok": True,
+                "history_html": render_history_html(load_history()),
+                "status_msg": "История очищена.",
+                "status_kind": "success",
+            }
+        )
+
     return HTMLResponse(
-        render_chat_page(request, subject=subject, status_msg="История очищена.")
+        render_chat_page(
+            request,
+            subject=subject,
+            status_msg="История очищена.",
+            status_kind="success",
+        )
     )

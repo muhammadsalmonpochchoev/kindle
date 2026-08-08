@@ -8,7 +8,7 @@ import shutil
 from typing import Optional
 
 from converters.ebook import convert_book, ConverterNotFound
-from templates import render_page
+from templates import render_page, render_status
 from subjects import SUBJECTS
 
 router = APIRouter(prefix="", tags=["books"])
@@ -97,7 +97,11 @@ def dashboard(request: Request):
 
 
 @router.get("/library", response_class=HTMLResponse)
-def library_page(request: Request, msg: Optional[str] = Query(default=None)):
+def library_page(
+    request: Request,
+    msg: Optional[str] = Query(default=None),
+    kind: str = Query(default="info"),
+):
     """HTML-версия — то, что реально открывает Kindle-браузер."""
     files = sorted(f.name for f in BOOKS.iterdir() if f.is_file())
     items = "".join(
@@ -113,11 +117,12 @@ def library_page(request: Request, msg: Optional[str] = Query(default=None)):
         + '</div></li>'
         for f in files
     )
-    banner = f'<p class="status">{msg}</p>' if msg else ""
+    empty_state = '<li class="book-item book-empty" id="book-empty-state" style="display:none">Ничего не найдено по этому запросу.</li>'
+    banner = render_status(msg, kind)
     body = f"""
     {banner}
     <input type="text" id="book-filter" placeholder="Поиск по названию..." onkeyup="filterBooks()">
-    <ul class="book-list" id="book-list">{items or "<li>Пока пусто</li>"}</ul>
+    <ul class="book-list" id="book-list">{items or "<li>Пока пусто</li>"}{empty_state}</ul>
     <h2>Загрузить книгу</h2>
     <form method="post" action="/upload" enctype="multipart/form-data">
       <input type="file" name="file">
@@ -157,13 +162,14 @@ async def upload(file: UploadFile = File(...)):
                     f.close()
                     dest.unlink(missing_ok=True)
                     msg = quote(f"Файл слишком большой (лимит {MAX_UPLOAD_MB} МБ)")
-                    return RedirectResponse(url=f"/library?msg={msg}", status_code=303)
+                    return RedirectResponse(url=f"/library?msg={msg}&kind=error", status_code=303)
                 f.write(chunk)
     except Exception:
         dest.unlink(missing_ok=True)
         raise
 
-    return RedirectResponse(url="/library", status_code=303)
+    msg = quote(f"Книга «{file.filename}» загружена.")
+    return RedirectResponse(url=f"/library?msg={msg}&kind=success", status_code=303)
 
 
 @router.get("/convert/{filename}")
@@ -173,7 +179,8 @@ def convert(filename: str, to: str = Query("mobi")):
         convert_book(src, to)
     except (ConverterNotFound, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return RedirectResponse(url="/library", status_code=303)
+    msg = quote(f"«{filename}» сконвертирован в {to}.")
+    return RedirectResponse(url=f"/library?msg={msg}&kind=success", status_code=303)
 
 
 def slugify_filename(title: str) -> str:
@@ -198,4 +205,6 @@ async def save_article(title: str = Form(...), content: str = Form(...)):
         counter += 1
 
     dest.write_text(f"{title}\n\n{content}", encoding="utf-8")
-    return RedirectResponse(url="/library?msg=Статья+сохранена+в+библиотеку", status_code=303)
+    return RedirectResponse(
+        url="/library?msg=Статья+сохранена+в+библиотеку&kind=success", status_code=303
+    )

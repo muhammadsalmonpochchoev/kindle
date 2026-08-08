@@ -10,6 +10,22 @@ NAV_LINKS = [
     ("/proxy/", "Прокси"),
 ]
 
+_STATUS_ICONS = {"info": "ℹ", "success": "✓", "error": "⚠"}
+
+
+def render_status(msg: Optional[str], kind: str = "info") -> str:
+    """Единая вёрстка для статусных сообщений (успех/ошибка/инфо) —
+    используется и на сервере (SSR), и как формат ответа для AJAX-JS.
+    kind: 'info' | 'success' | 'error'."""
+    if not msg:
+        return ""
+    icon = _STATUS_ICONS.get(kind, _STATUS_ICONS["info"])
+    return (
+        f'<p class="status status-{kind}">'
+        f'<span class="status-icon">{icon}</span> {html.escape(msg)}'
+        f"</p>"
+    )
+
 
 def render_page(title: str, body: str, active: str = "", request: Optional[Request] = None) -> str:
     is_https = bool(request and request.url.scheme == "https")
@@ -35,6 +51,7 @@ def render_page(title: str, body: str, active: str = "", request: Optional[Reque
 <nav>{nav}</nav>
 <h1>{html.escape(title)}</h1>
 {body}
+<script src="/static/app-common.js"></script>
 <script src="/static/{js_file}"></script>
 </body>
 </html>"""

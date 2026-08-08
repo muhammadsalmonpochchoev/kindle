@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
-from templates import render_page
+from templates import render_page, render_status
 from services.rate_limit import SlidingWindowLimiter
 
 router = APIRouter(prefix="/proxy", tags=["proxy"])
@@ -34,9 +34,10 @@ async def proxy_page(request: Request, url: Optional[str] = Query(default=None))
         return HTMLResponse(render_page("Прокси-браузер", FORM.format(value=""), active="/proxy/", request=request))
 
     if not _proxy_limiter.allow():
-        body = FORM.format(value=url) + (
-            f'<p class="status">Слишком много запросов подряд — лимит '
-            f'{PROXY_RATE_LIMIT_PER_MINUTE} в минуту. Подожди немного.</p>'
+        body = FORM.format(value=url) + render_status(
+            f"Слишком много запросов подряд — лимит "
+            f"{PROXY_RATE_LIMIT_PER_MINUTE} в минуту. Подожди немного.",
+            "error",
         )
         return HTMLResponse(render_page("Прокси-браузер", body, active="/proxy/", request=request))
 
@@ -47,7 +48,7 @@ async def proxy_page(request: Request, url: Optional[str] = Query(default=None))
             resp = await client.get(fetch_url, headers={"User-Agent": "Mozilla/5.0"})
             resp.raise_for_status()
     except Exception as e:
-        body = FORM.format(value=url) + f'<p class="status">Ошибка загрузки: {e}</p>'
+        body = FORM.format(value=url) + render_status(f"Ошибка загрузки: {e}", "error")
         return HTMLResponse(render_page("Прокси-браузер", body, active="/proxy/", request=request))
 
     soup = BeautifulSoup(resp.text, "html.parser")
