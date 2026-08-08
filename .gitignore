@@ -1,0 +1,10 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Секреты и локальные данные — своё на каждой машине
+.env
+certs/*.pem
+books/*
+!books/.gitkeep
