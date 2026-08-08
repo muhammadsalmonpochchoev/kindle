@@ -4,3 +4,5 @@ httpx
 beautifulsoup4
 python-multipart
 cryptography
+python-dotenv
+markdown>=3.6,<4

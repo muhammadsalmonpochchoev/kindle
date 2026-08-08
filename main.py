@@ -1,3 +1,11 @@
+from dotenv import load_dotenv
+
+# ВАЖНО: .env должен подгрузиться ДО импорта роутеров ниже — они читают
+# переменные окружения (OPENROUTER_API_KEY, лимиты и т.д.) на уровне
+# модуля, то есть в момент импорта. Если поменять порядок строк —
+# .env перестанет реально на что-либо влиять.
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse

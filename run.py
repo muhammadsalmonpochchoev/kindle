@@ -16,6 +16,9 @@ import asyncio
 import os
 
 import uvicorn
+from dotenv import load_dotenv
+
+load_dotenv()  # на случай, если run.py когда-нибудь запустят без main.py
 
 from main import app
 
